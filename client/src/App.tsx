@@ -217,7 +217,7 @@ export default function App() {
     );
   }
 
-  // Chat UI
+  // Chat UI.
   return (
     <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
       <h2>
