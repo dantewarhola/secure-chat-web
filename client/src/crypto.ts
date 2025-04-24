@@ -1,22 +1,24 @@
 // client/src/crypto.ts
 import nacl from 'tweetnacl';
-import { encodeBase64, decodeBase64, encodeUTF8, decodeUTF8 } from 'tweetnacl-util';
+import {
+  encodeBase64,
+  decodeBase64,
+  encodeUTF8,
+  decodeUTF8,
+} from 'tweetnacl-util';
 
-/** Generate a 32-byte keypair for secretbox (symmetric) or box (asymmetric) */
-export function generateKeyPair() {
-  const kp = nacl.box.keyPair(); 
-  return {
-    publicKey: encodeBase64(kp.publicKey),
-    privateKey: encodeBase64(kp.secretKey),
-  };
+/**
+ * Derive a 32-byte symmetric key from a password via SHA-256.
+ */
+export async function deriveKeyFromPassword(password: string): Promise<Uint8Array> {
+  const enc = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-256', enc.encode(password));
+  return new Uint8Array(hashBuffer);
 }
 
-/** Decode a base64 string back into a Uint8Array key */
-export function b64ToKey(b64: string): Uint8Array {
-  return decodeBase64(b64);
-}
-
-/** Encrypt a UTF-8 string with secretbox (XSalsa20-Poly1305) */
+/**
+ * Encrypt a UTF-8 string with XSalsa20-Poly1305 using the given key.
+ */
 export function encryptMessage(
   message: string,
   key: Uint8Array
@@ -29,7 +31,9 @@ export function encryptMessage(
   };
 }
 
-/** Decrypt a secretbox ciphertext back to a UTF-8 string */
+/**
+ * Decrypt an XSalsa20-Poly1305 ciphertext back to a UTF-8 string.
+ */
 export function decryptMessage(
   cipherB64: string,
   nonceB64: string,
@@ -37,19 +41,7 @@ export function decryptMessage(
 ): string {
   const cipher = decodeBase64(cipherB64);
   const nonce = decodeBase64(nonceB64);
-  const message = nacl.secretbox.open(cipher, nonce, key);
-  if (!message) throw new Error('Decryption failed');
-  return encodeUTF8(message);
-}
-
-export function deriveSharedKey(
-  peerPublicB64: string,
-  mySecretB64: string
-): Uint8Array {
-  // Convert both Base64 keys back into Uint8Arrays
-  const peerPub = decodeBase64(peerPublicB64);
-  const mySec   = decodeBase64(mySecretB64);
-
-  // Derive the shared key
-  return nacl.box.before(peerPub, mySec);
+  const msg = nacl.secretbox.open(cipher, nonce, key);
+  if (!msg) throw new Error('Decryption failed');
+  return encodeUTF8(msg);
 }

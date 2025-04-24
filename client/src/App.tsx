@@ -1,165 +1,256 @@
 // client/src/App.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { socket } from './socket';
-import {
-  generateKeyPair,
-  deriveSharedKey,
-  encryptMessage,
-  decryptMessage,
-} from './crypto';
+import { deriveKeyFromPassword, encryptMessage, decryptMessage } from './crypto';
 
-interface KeyPair {
-  publicKey: string;
-  privateKey: string;
+type Step = 'login' | 'ask' | 'lobby' | 'join' | 'create' | 'chat';
+
+interface RoomInfo {
+  roomId: string;
+  count: number;
+  capacity: number;
 }
 
 const SERVER = 'http://localhost:4000';
 
 export default function App() {
-  // ❶ Form inputs
-  const [inputUserId, setInputUserId] = useState(
-    localStorage.getItem('userId') || ''
-  );
-  const [inputPeerId, setInputPeerId] = useState(
-    localStorage.getItem('peerId') || ''
-  );
+  // 1) Navigation step
+  const [step, setStep] = useState<Step>('login');
 
-  // ❷ Committed IDs & login flag
-  const [userId, setUserId] = useState<string | null>(null);
-  const [peerId, setPeerId] = useState<string | null>(null);
-  const [loggedIn, setLoggedIn] = useState(false);
+  // 2) Form inputs
+  const [inputUserId, setInputUserId] = useState('');
+  const [inputPassword, setInputPassword] = useState('');
 
-  // ❸ Chat state
-  const [sharedKey, setSharedKey] = useState<Uint8Array | null>(null);
+  // 3) Committed values
+  const [userId, setUserId] = useState('');
+  const [selectedRoom, setSelectedRoom] = useState('');
+
+  // 4) Lobby data
+  const [rooms, setRooms] = useState<RoomInfo[]>([]);
+
+  // 5) Chat state
+  const [key, setKey] = useState<Uint8Array | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
-  const [input, setInput] = useState('');
+  const [inputMessage, setInputMessage] = useState('');
 
-  // ❹ Only run this effect once we've clicked “Start Chat”
+  // 6) Fetch rooms when entering lobby
   useEffect(() => {
-    if (!loggedIn || !userId || !peerId) return;
-    console.log('🛠️ useEffect fired for', userId, '→', peerId);
+    if (step === 'lobby') {
+      axios
+        .get<{ rooms: RoomInfo[] }>(`${SERVER}/rooms`)
+        .then(res => setRooms(res.data.rooms))
+        .catch(err => console.error('Could not fetch rooms', err));
+    }
+  }, [step]);
 
-    (async () => {
-      console.log('1️⃣ Checking keypair for', userId);
-      let kp: KeyPair;
-      const stored = localStorage.getItem(`keys_${userId}`);
-      if (stored) {
-        kp = JSON.parse(stored);
-        console.log('   ✅ Loaded existing keypair');
-      } else {
-        kp = generateKeyPair();
-        localStorage.setItem(`keys_${userId}`, JSON.stringify(kp));
-        console.log('   🔑 Signing up', userId);
-        await axios.post(`${SERVER}/signup`, { userId, publicKey: kp.publicKey });
-        console.log('   ✅ Signup complete for', userId);
-      }
-
-      console.log('2️⃣ Fetching publicKey for peer', peerId);
-      const { data } = await axios.get<{ publicKey: string }>(
-        `${SERVER}/publicKey/${peerId}`
-      );
-      console.log('   👀 Received peer publicKey:', data.publicKey);
-
-      console.log('3️⃣ Deriving shared secret');
-      const key = deriveSharedKey(data.publicKey, kp.privateKey);
-      console.log('   🔑 Shared key:', key);
-      setSharedKey(key);
-
-      // join the same sorted room in both tabs
-      const chatId = [userId, peerId].sort().join(':');
-      console.log('4️⃣ Joining room', chatId);
-      socket.connect();
-      socket.emit('join', { chatId });
-
-      socket.on('encrypted_message', ({ nonce, cipher }) => {
-        console.log('   🔄 Received encrypted_message:', { nonce, cipher });
-        const text = decryptMessage(cipher, nonce, key);
-        setMessages((prev) => [...prev, `${peerId}: ${text}`]);
-      });
-    })();
+  // 7) Socket event handlers
+  useEffect(() => {
+    socket.on('join_success', async () => {
+      const k = await deriveKeyFromPassword(inputPassword);
+      setKey(k);
+      setStep('chat');
+    });
+    socket.on('join_error', ({ message }) => {
+      alert(`Could not join: ${message}`);
+      socket.disconnect();
+      setStep('lobby');
+    });
+    socket.on('encrypted_message', ({ sender, nonce, cipher }) => {
+      if (!key) return;
+      const text = decryptMessage(cipher, nonce, key);
+      setMessages(prev => [...prev, `${sender}: ${text}`]);
+    });
 
     return () => {
+      socket.off('join_success');
+      socket.off('join_error');
       socket.off('encrypted_message');
-      socket.disconnect();
     };
-  }, [loggedIn, userId, peerId]);
+  }, [inputPassword, key]);
 
-  // ❺ Handle clicking “Start Chat”
+  // 8) UI handlers
   const handleLogin = () => {
-    localStorage.setItem('userId', inputUserId);
-    localStorage.setItem('peerId', inputPeerId);
     setUserId(inputUserId);
-    setPeerId(inputPeerId);
-    setLoggedIn(true);
-    console.log('🛠️ Logged in as', inputUserId, '→', inputPeerId);
+    setStep('ask');
+  };
+  const handleAskYes = () => setStep('join');
+  const handleAskNo  = () => setStep('lobby');
+
+  const handleJoinRoom = (roomId: string) => {
+    setSelectedRoom(roomId);
+    setStep('join');
   };
 
-  // ❻ Send a message
-  const send = () => {
-    if (!sharedKey || !userId || !peerId) return;
-    const { cipher, nonce } = encryptMessage(input || '…', sharedKey);
-    const chatId = [userId, peerId].sort().join(':');
-    console.log('✉️ Sending to room', chatId, { cipher, nonce });
-    socket.emit('encrypted_message', { chatId, nonce, cipher });
-    setMessages((prev) => [...prev, `${userId}: ${input || '…'}`]);
-    setInput('');
+  const performJoin = () => {
+    socket.connect();
+    socket.emit('join', { roomId: selectedRoom, password: inputPassword });
   };
 
-  // ❼ Render
-  if (!loggedIn) {
+  const handleCreate = () => {
+    setSelectedRoom(''); // clear in case
+    setStep('create');
+  };
+  const handleCreateSubmit = () => {
+    if (!selectedRoom || !inputPassword) return;
+    socket.connect();
+    socket.emit('join', { roomId: selectedRoom, password: inputPassword });
+  };
+
+  const handleSend = () => {
+    if (!key) return;
+    const { nonce, cipher } = encryptMessage(inputMessage, key);
+    socket.emit('encrypted_message', {
+      roomId: selectedRoom,
+      nonce,
+      cipher,
+      sender: userId,
+    });
+    setMessages(prev => [...prev, `${userId}: ${inputMessage}`]);
+    setInputMessage('');
+  };
+
+  // 9) Render per step
+  if (step === 'login') {
     return (
       <div style={{ padding: 24 }}>
-        <h2>Login / Setup</h2>
+        <h2>Enter your name</h2>
         <input
-          placeholder="Your userId"
+          placeholder="Name"
           value={inputUserId}
-          onChange={(e) => setInputUserId(e.target.value)}
+          onChange={e => setInputUserId(e.target.value)}
           style={{ marginRight: 8 }}
         />
-        <input
-          placeholder="Peer userId"
-          value={inputPeerId}
-          onChange={(e) => setInputPeerId(e.target.value)}
-          style={{ marginRight: 8 }}
-        />
-        <button
-          onClick={handleLogin}
-          disabled={!inputUserId || !inputPeerId}
-        >
-          Start Chat
+        <button onClick={handleLogin} disabled={!inputUserId}>
+          Next
         </button>
       </div>
     );
   }
 
-  return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
-      <h1>
-        Chatting as <em>{userId}</em> → <em>{peerId}</em>
-      </h1>
-      <div style={{ marginBottom: 16 }}>
+  if (step === 'ask') {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Hello, {userId}!</h2>
+        <p>Do you want to join an existing room?</p>
+        <button onClick={handleAskYes} style={{ marginRight: 8 }}>
+          Yes
+        </button>
+        <button onClick={handleAskNo}>No, show me rooms</button>
+      </div>
+    );
+  }
+
+  if (step === 'lobby') {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Available Rooms</h2>
+        {rooms.length === 0 && <p>No rooms yet. Create one!</p>}
+        {rooms.map(r => (
+          <div
+            key={r.roomId}
+            style={{
+              border: '1px solid #ccc',
+              borderRadius: 4,
+              padding: 12,
+              marginBottom: 12,
+              maxWidth: 300,
+            }}
+          >
+            <strong>{r.roomId}</strong><br/>
+            {r.count}/{r.capacity} users<br/>
+            <button
+              onClick={() => handleJoinRoom(r.roomId)}
+              style={{ marginTop: 8 }}
+            >
+              Join Room
+            </button>
+          </div>
+        ))}
+        <button onClick={handleCreate}>Create New Room</button>
+      </div>
+    );
+  }
+
+  if (step === 'join') {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Join Room: {selectedRoom}</h2>
         <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type a message…"
-          style={{ padding: 8, width: '60%' }}
+          placeholder="Password"
+          type="password"
+          value={inputPassword}
+          onChange={e => setInputPassword(e.target.value)}
+          style={{ marginRight: 8 }}
         />
-        <button
-          onClick={send}
-          disabled={!sharedKey}
-          style={{ marginLeft: 8, padding: '8px 16px' }}
-        >
-          Send
+        <button onClick={performJoin} disabled={!inputPassword}>
+          Join
         </button>
       </div>
-      <div>
+    );
+  }
+
+  if (step === 'create') {
+    return (
+      <div style={{ padding: 24 }}>
+        <h2>Create Room</h2>
+        <input
+          placeholder="Room ID"
+          value={selectedRoom}
+          onChange={e => setSelectedRoom(e.target.value)}
+          style={{ marginRight: 8 }}
+        />
+        <input
+          placeholder="Password"
+          type="password"
+          value={inputPassword}
+          onChange={e => setInputPassword(e.target.value)}
+          style={{ marginRight: 8 }}
+        />
+        <button
+          onClick={handleCreateSubmit}
+          disabled={!selectedRoom || !inputPassword}
+        >
+          Create & Join
+        </button>
+      </div>
+    );
+  }
+
+  // Chat UI
+  return (
+    <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+      <h2>
+        Room: <em>{selectedRoom}</em> (You: <em>{userId}</em>)
+      </h2>
+      <div
+        style={{
+          border: '1px solid #ccc',
+          padding: 12,
+          height: 300,
+          overflowY: 'auto',
+          marginBottom: 12,
+        }}
+      >
         {messages.map((m, i) => (
           <div key={i} style={{ marginBottom: 4 }}>
             {m}
           </div>
         ))}
       </div>
+      <input
+        placeholder="Type a message…"
+        value={inputMessage}
+        onChange={e => setInputMessage(e.target.value)}
+        style={{ padding: 8, width: '60%' }}
+      />
+      <button
+        onClick={handleSend}
+        disabled={!key}
+        style={{ marginLeft: 8, padding: '8px 16px' }}
+      >
+        Send
+      </button>
     </div>
   );
 }
