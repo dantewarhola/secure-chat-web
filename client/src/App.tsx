@@ -16,6 +16,7 @@ export default function App() {
         <Route path="/" element={<Login />} />
         <Route path="/ask" element={<Ask />} />
         <Route path="/lobby" element={<Lobby />} />
+        <Route path="/join" element={<Join />} />
         <Route path="/join/:roomId" element={<Join />} />
         <Route path="/create" element={<Create />} />
         <Route path="/chat" element={<Chat />} />

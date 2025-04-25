@@ -1,25 +1,27 @@
-import { useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import '../styles.css';
 
 export default function Join() {
-  const { roomId: routeRoomId } = useParams<{ roomId: string }>(); // roomId from URL if it exists
-  const [inputRoomId, setInputRoomId] = useState(routeRoomId || '');
-  const [inputPassword, setInputPassword] = useState('');
+  const [roomId, setRoomId] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
   const handleJoin = () => {
     const userId = localStorage.getItem('userId');
-    sessionStorage.setItem('roomId', inputRoomId);
-    sessionStorage.setItem('roomPassword', inputPassword);
+    if (!roomId || !password || !userId) return;
+
+    sessionStorage.setItem('roomId', roomId);
+    sessionStorage.setItem('roomPassword', password);
 
     socket.connect();
-    socket.emit('join', { roomId: inputRoomId, password: inputPassword });
+    socket.emit('join', { roomId, password });
 
     socket.on('join_success', () => {
       navigate('/chat');
     });
+
     socket.on('join_error', ({ message }) => {
       alert(`Could not join: ${message}`);
       socket.disconnect();
@@ -31,16 +33,16 @@ export default function Join() {
       <h2>Join a Room</h2>
       <input
         placeholder="Room ID"
-        value={inputRoomId}
-        onChange={(e) => setInputRoomId(e.target.value)}
+        value={roomId}
+        onChange={(e) => setRoomId(e.target.value)}
       />
       <input
         type="password"
         placeholder="Password"
-        value={inputPassword}
-        onChange={(e) => setInputPassword(e.target.value)}
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
       />
-      <button onClick={handleJoin} disabled={!inputRoomId || !inputPassword}>
+      <button onClick={handleJoin} disabled={!roomId || !password}>
         Join
       </button>
     </div>

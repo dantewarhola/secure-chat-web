@@ -49,7 +49,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="container">
+    <div className="message-box">
       <h2>
         Room: <em>{roomId}</em> (You: <em>{userId}</em>)
       </h2>
