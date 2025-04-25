@@ -7,6 +7,14 @@ Built with **React**, **Node.js (Express)**, **Socket.IO**, and **custom encrypt
 
 ---
 
+# ✨ Live Demo
+
+>
+
+```
+https://encrypted-messaging.onrender.com
+```
+
 ## 🚀 Features
 
 - **User Authentication:** Simple username login
@@ -61,7 +69,7 @@ Open two terminals:
 ```bash
 # Terminal 1: Start backend server
 cd server
-npm start
+node index.js
 
 # Terminal 2: Start frontend client
 cd client
@@ -152,13 +160,12 @@ npm run build
 
 ---
 
-# ✨ Live Demo
+# 🧑‍💻 Author
 
->
-
-```
-Frontend: https://encrypted-messaging.onrender.com
-```
+**Dante Warhola**  
+University of Pittsburgh — Computer Science  
+Pi Kappa Phi Risk Manager | Cybersecurity Enthusiast  
+[LinkedIn](https://www.linkedin.com/in/dante-warhola/) | [GitHub](https://github.com/dantewarhola)
 
 ---
 
