@@ -159,6 +159,12 @@ npm run build
 ```
 Frontend: https://encrypted-messaging.onrender.com
 ```
+## 🧑‍💻 Author
+
+**Dante Warhola**  
+University of Pittsburgh — Computer Science  
+Pi Kappa Phi Risk Manager | Cybersecurity Enthusiast  
+[LinkedIn](https://www.linkedin.com/in/dante-warhola/) | [GitHub](https://github.com/dantewarhola)
 
 ---
 
