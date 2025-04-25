@@ -12,7 +12,7 @@ Built with **React**, **Node.js (Express)**, **Socket.IO**, and **custom encrypt
 >
 
 ```
-Frontend: https://encrypted-messaging.onrender.com
+https://encrypted-messaging.onrender.com
 ```
 
 ## 🚀 Features
