@@ -7,6 +7,14 @@ Built with **React**, **Node.js (Express)**, **Socket.IO**, and **custom encrypt
 
 ---
 
+# ✨ Live Demo
+
+>
+
+```
+Frontend: https://encrypted-messaging.onrender.com
+```
+
 ## 🚀 Features
 
 - **User Authentication:** Simple username login
@@ -152,14 +160,7 @@ npm run build
 
 ---
 
-# ✨ Live Demo
-
->
-
-```
-Frontend: https://encrypted-messaging.onrender.com
-```
-## 🧑‍💻 Author
+# 🧑‍💻 Author
 
 **Dante Warhola**  
 University of Pittsburgh — Computer Science  
