@@ -1,9 +1,18 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
+const cors = require('cors'); // 👈 ADD THIS LINE
+
 const app = express();
 const server = http.createServer(app);
 
+// 👇 ENABLE CORS FOR EXPRESS ROUTES (like /rooms)
+app.use(cors({
+  origin: 'https://encrypted-messaging.onrender.com',
+  methods: ['GET', 'POST']
+}));
+
+// 👇 ENABLE CORS FOR SOCKET.IO
 const io = new Server(server, {
   cors: {
     origin: 'https://encrypted-messaging.onrender.com',
@@ -12,6 +21,7 @@ const io = new Server(server, {
 });
 
 const rooms = new Map();
+
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -57,13 +67,7 @@ io.on('connection', (socket) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
-
-
-
+// ✅ LOBBY SUPPORT — provides room list to frontend
 app.get('/rooms', (req, res) => {
   const availableRooms = Array.from(rooms.entries()).map(([roomId, room]) => ({
     roomId,
@@ -71,4 +75,9 @@ app.get('/rooms', (req, res) => {
     capacity: room.capacity
   }));
   res.json({ rooms: availableRooms });
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
