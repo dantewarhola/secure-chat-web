@@ -57,3 +57,14 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
+
+
+app.get('/rooms', (req, res) => {
+  const availableRooms = Array.from(rooms.entries()).map(([roomId, room]) => ({
+    roomId,
+    count: room.members.size,
+    capacity: room.capacity
+  }));
+  res.json({ rooms: availableRooms });
+});
