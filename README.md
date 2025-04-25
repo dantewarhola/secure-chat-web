@@ -61,7 +61,7 @@ Open two terminals:
 ```bash
 # Terminal 1: Start backend server
 cd server
-npm start
+node index.js
 
 # Terminal 2: Start frontend client
 cd client
