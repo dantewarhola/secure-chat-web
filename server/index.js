@@ -1,32 +1,13 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors'); // <<== YOU NEED THIS
 
 const app = express();
 const server = http.createServer(app);
-
-// 👇 Set up CORS for Express (for /rooms and other HTTP routes)
-app.use(cors({
-  origin: 'https://encrypted-messaging.onrender.com', // your frontend url
-  methods: ['GET', 'POST']
-}));
-
-const io = new Server(server, {
-  cors: {
-    origin: 'https://encrypted-messaging.onrender.com', // your frontend url
-    methods: ['GET', 'POST']
-  }
-});
+const io = new Server(server);
 
 const rooms = new Map();
 
-// (optional: basic route)
-app.get('/', (req, res) => {
-  res.send('Server is running');
-});
-
-// 👇 YOUR SOCKET CODE (what you posted)
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
@@ -72,7 +53,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// 👇 SERVER LISTEN (important for Render to expose your port)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
