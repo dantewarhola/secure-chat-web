@@ -20,6 +20,9 @@ export default function Login() {
         placeholder="Name"
         value={inputUserId}
         onChange={(e) => setInputUserId(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') handleLogin();
+        }}
       />
       <button onClick={handleLogin}>Next</button>
     </div>

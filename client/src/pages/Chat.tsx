@@ -62,6 +62,12 @@ export default function Chat() {
         placeholder="Type a message…"
         value={inputMessage}
         onChange={(e) => setInputMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
+          }
+        }}
       />
       <button onClick={handleSend} disabled={!key}>Send</button>
     </div>
