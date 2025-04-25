@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from '../socket';
 import '../styles.css';
@@ -8,17 +8,11 @@ export default function Join() {
   const [roomId, setRoomId] = useState(savedRoomId);
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
-  
 
-  const handleJoin = () => {
+  useEffect(() => {
     const userId = localStorage.getItem('userId');
-    if (!roomId || !password || !userId) return;
 
-    sessionStorage.setItem('roomId', roomId);
-    sessionStorage.setItem('roomPassword', password);
-
-    socket.connect();
-    socket.emit('join', { roomId, password });
+    if (!userId) return;
 
     socket.on('join_success', () => {
       navigate('/chat');
@@ -28,6 +22,25 @@ export default function Join() {
       alert(`Could not join: ${message}`);
       socket.disconnect();
     });
+
+    return () => {
+      socket.off('join_success');
+      socket.off('join_error');
+    };
+  }, [navigate]);
+
+  const handleJoin = () => {
+    const userId = localStorage.getItem('userId');
+    if (!roomId || !password || !userId) return;
+
+    sessionStorage.setItem('roomId', roomId);
+    sessionStorage.setItem('roomPassword', password);
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    socket.emit('join', { roomId, password, userId }); // ✅ send userId
   };
 
   return (
