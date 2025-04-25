@@ -1,21 +1,21 @@
-// client/src/pages/Join.tsx
 import { useParams, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { socket } from '../socket';
 import '../styles.css';
 
 export default function Join() {
-  const { roomId } = useParams<{ roomId: string }>();
+  const { roomId: routeRoomId } = useParams<{ roomId: string }>(); // roomId from URL if it exists
+  const [inputRoomId, setInputRoomId] = useState(routeRoomId || '');
   const [inputPassword, setInputPassword] = useState('');
   const navigate = useNavigate();
 
   const handleJoin = () => {
     const userId = localStorage.getItem('userId');
-    sessionStorage.setItem('roomId', roomId || '');
+    sessionStorage.setItem('roomId', inputRoomId);
     sessionStorage.setItem('roomPassword', inputPassword);
 
     socket.connect();
-    socket.emit('join', { roomId, password: inputPassword });
+    socket.emit('join', { roomId: inputRoomId, password: inputPassword });
 
     socket.on('join_success', () => {
       navigate('/chat');
@@ -28,14 +28,21 @@ export default function Join() {
 
   return (
     <div className="container">
-      <h2>Join Room: {roomId}</h2>
+      <h2>Join a Room</h2>
+      <input
+        placeholder="Room ID"
+        value={inputRoomId}
+        onChange={(e) => setInputRoomId(e.target.value)}
+      />
       <input
         type="password"
         placeholder="Password"
         value={inputPassword}
         onChange={(e) => setInputPassword(e.target.value)}
       />
-      <button onClick={handleJoin} disabled={!inputPassword}>Join</button>
+      <button onClick={handleJoin} disabled={!inputRoomId || !inputPassword}>
+        Join
+      </button>
     </div>
   );
 }

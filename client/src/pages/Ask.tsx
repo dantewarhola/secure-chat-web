@@ -9,7 +9,7 @@ export default function Ask() {
     <div className="container">
       <h2>Hello, {userId}!</h2>
       <p>Do you want to join an existing room?</p>
-      <button onClick={() => navigate('/join/someRoom')}>Yes</button>
+      <button onClick={() => navigate('/join')}>Yes</button>
       <button onClick={() => navigate('/lobby')}>No, show me rooms</button>
     </div>
   );
