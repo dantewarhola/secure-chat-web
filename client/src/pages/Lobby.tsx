@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import '../styles.css';
 
-const SERVER = 'http://localhost:4000';
+const SERVER = 'https://secure-chat-web.onrender.com';
 
 interface RoomInfo {
   roomId: string;
