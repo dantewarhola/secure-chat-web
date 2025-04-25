@@ -1,34 +1,7 @@
-// server/index.js
-const express = require('express');
-const cors = require('cors');
-const http = require('http');
-const { Server } = require('socket.io');
-
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-// In-memory rooms registry
-// Map<roomId, { password: string, capacity: number, members: Set<socket.id> }>
-const rooms = new Map();
-
-// 1) List existing rooms with counts & capacity
-app.get('/rooms', (_req, res) => {
-  const list = Array.from(rooms.entries()).map(([roomId, room]) => ({
-    roomId,
-    count: room.members.size,
-    capacity: room.capacity,
-  }));
-  res.json({ rooms: list });
-});
-
-const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
-
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id);
 
-  socket.on('join', ({ roomId, password }) => {
+  socket.on('join', ({ roomId, password, userId }) => { // ✅ pass userId too!
     let room = rooms.get(roomId);
     if (!room) {
       room = { password, capacity: 2, members: new Set() };
@@ -43,8 +16,12 @@ io.on('connection', (socket) => {
     }
     room.members.add(socket.id);
     socket.join(roomId);
+
     console.log(`✅ ${socket.id} joined ${roomId} (${room.members.size}/${room.capacity})`);
     socket.emit('join_success', { roomId });
+
+    // ✅ Broadcast that user joined
+    socket.to(roomId).emit('system_message', { message: `${userId} has joined the room.` });
   });
 
   socket.on('encrypted_message', ({ roomId, nonce, cipher, sender }) => {
@@ -52,17 +29,18 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    for (const [rid, room] of rooms.entries()) {
+    for (const [roomId, room] of rooms.entries()) {
       if (room.members.delete(socket.id)) {
-        socket.leave(rid);
-        console.log(`❌ ${socket.id} left ${rid}`);
+        socket.leave(roomId);
+        console.log(`❌ ${socket.id} left ${roomId}`);
         if (room.members.size === 0) {
-          rooms.delete(rid);
-          console.log(`🗑 Deleted empty room ${rid}`);
+          rooms.delete(roomId);
+          console.log(`🗑 Deleted empty room ${roomId}`);
+        } else {
+          // ✅ Broadcast that a user left
+          io.to(roomId).emit('system_message', { message: `A user has left the room.` });
         }
       }
     }
   });
 });
-
-server.listen(4000, () => console.log(`🚀 Server listening on port 4000`));

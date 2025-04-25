@@ -4,9 +4,11 @@ import { socket } from '../socket';
 import '../styles.css';
 
 export default function Join() {
-  const [roomId, setRoomId] = useState('');
+  const savedRoomId = sessionStorage.getItem('selectedRoomId') || '';
+  const [roomId, setRoomId] = useState(savedRoomId);
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
+  
 
   const handleJoin = () => {
     const userId = localStorage.getItem('userId');
